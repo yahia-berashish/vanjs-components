@@ -129,7 +129,6 @@ export const addComponents = (
 
 export interface CFnOptions {
   name?: string;
-  register?: boolean;
 }
 
 export const C = <TProps extends Record<string, any> | void = void>(

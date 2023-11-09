@@ -12,7 +12,8 @@ export type Children =
   | VanElement<any>
   | VanComponent<any>
   | ChildDom
-  | Children[];
+  | Children[]
+  | (() => Children);
 export type ComponentTags = {
   [K in keyof HTMLElementTagNameMap]: TagComponentFunc<K>;
 };
@@ -87,8 +88,6 @@ export class VanComponent<TProps extends Record<string, any> | null = null> {
         return child as ChildDom;
       }
     });
-
-    console.log("COMPONENT HTML:", tagChildren);
 
     return tagChildren;
   }

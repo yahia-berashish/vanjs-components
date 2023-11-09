@@ -1,12 +1,18 @@
-import van, { ChildDom, Props, TagFunc } from 'vanjs-core';
+import van, { ChildDom, Props, TagFunc } from "vanjs-core";
 
-export type FC<TProps = void> = (props: TProps) => ChildDom;
+export type FC<TProps extends Record<string, any> | void = void> = (
+  props: TProps
+) => VanComponent<TProps extends void ? null : TProps>;
 export type TagComponentFunc<TTag extends keyof HTMLElementTagNameMap> = (
   first?: ElementProps<TTag> | Children,
   ...rest: Children[]
 ) => VanElement<TTag>;
 
-export type Children = VanElement<any> | VanComponent<any> | ChildDom;
+export type Children =
+  | VanElement<any>
+  | VanComponent<any>
+  | ChildDom
+  | Children[];
 export type ComponentTags = {
   [K in keyof HTMLElementTagNameMap]: TagComponentFunc<K>;
 };
@@ -18,9 +24,9 @@ export const isNotProps = (value: any) =>
   value instanceof VanComponent ||
   value instanceof VanElement ||
   value instanceof Element ||
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean';
+  typeof value === "string" ||
+  typeof value === "number" ||
+  typeof value === "boolean";
 
 export class VanElement<
   TTag extends keyof HTMLElementTagNameMap = keyof HTMLElementTagNameMap
@@ -39,7 +45,7 @@ export class VanElement<
   }
 
   toHTML(
-    { children, tagFn, props }: VanElement = this
+    { children, tagFn, props }: VanElement = this as any
   ): HTMLElementTagNameMap[TTag] {
     const tagChildren = children?.map((child) => {
       if (child instanceof VanElement) {
@@ -57,16 +63,16 @@ export class VanElement<
 
 export class VanComponent<TProps extends Record<string, any> | null = null> {
   parent: VanComponent | null;
-  name: string;
+  name: string | null;
   children: Children[];
   props: TProps;
 
   constructor(
     parent: VanComponent | null,
-    options: { name: string; children: Children[]; props: TProps }
+    options: { name?: string; children: Children[]; props: TProps }
   ) {
-    this.parent = null;
-    this.name = options.name;
+    this.parent = parent;
+    this.name = options.name ?? null;
     this.children = options.children;
     this.props = options.props;
   }
@@ -82,14 +88,14 @@ export class VanComponent<TProps extends Record<string, any> | null = null> {
       }
     });
 
-    console.log('COMPONENT HTML:', tagChildren);
+    console.log("COMPONENT HTML:", tagChildren);
 
     return tagChildren;
   }
 }
 
 export const componentTags = new Proxy(van.tags, {
-  get(_, property: keyof HTMLElementTagNameMap, reciever) {
+  get(_, property: keyof HTMLElementTagNameMap) {
     const newTagFn: TagComponentFunc<typeof property> = (
       first,
       ...children
@@ -121,6 +127,28 @@ export const addComponents = (
   return van.add(container, component.toDOM());
 };
 
-const C = <TProps = void>(
-  props: TProps
-): VanComponent<TProps extends void ? null : TProps> => {};
+export interface CFnOptions {
+  name?: string;
+  register?: boolean;
+}
+
+export const C = <TProps extends Record<string, any> | void = void>(
+  fn: (props: TProps) => Children,
+  options?: CFnOptions
+): FC<TProps> => {
+  const componentFn = (props: TProps) => {
+    const children = fn(props);
+    const component = new VanComponent<TProps extends void ? null : TProps>(
+      null,
+      {
+        name: options?.name || fn.name || undefined,
+        props: props as any,
+        children: Array.isArray(children) ? children : [children],
+      }
+    );
+
+    return component;
+  };
+
+  return componentFn;
+};
